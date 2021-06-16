@@ -8,6 +8,8 @@ import spinner from '../assets/spinner.gif'
 
 import Cart from '../components/Cart';
 
+import { idbPromise } from "../utils/helpers";
+
 import {
   REMOVE_FROM_CART,
   UPDATE_CART_QUANTITY,
@@ -26,16 +28,32 @@ function Detail() {
   const { products } = state;
 
   useEffect(() => {
+    // already in global store
     if (products.length) {
       setCurrentProduct(products.find(product => product._id === id));
-    } else if (data) {
+    }
+    // retrieved from server
+    else if (data) {
       dispatch({
         type: UPDATE_PRODUCTS,
         products: data.products
       });
-    }
-  }, [products, data, dispatch, id]);
 
+      data.products.forEach((product) => {
+        idbPromise('products', 'put', product);
+      });
+    }
+    // get cache from idb
+    else if (!loading) {
+      idbPromise('products', 'get').then((indexedProducts) => {
+        dispatch({
+          type: UPDATE_PRODUCTS,
+          products: indexedProducts
+        });
+      });
+    }
+  }, [products, data, loading, dispatch, id]);
+  
   const { cart } = state;
 
   const addToCart = () => {
